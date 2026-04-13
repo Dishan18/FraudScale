@@ -1,5 +1,18 @@
 venv/
 __pycache__/
 *.pyc
-output/
-data/
+*.log
+*.tmp
+.env
+
+# Spark temp
+spark-warehouse/
+metastore_db/
+
+# Kafka logs
+kafka-logs/
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
