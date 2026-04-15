@@ -1,8 +1,10 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
-from pyspark.sql.types import StructType, StringType, IntegerType
 from spark.heuristics import apply_heuristics
 from spark.behavior import add_timestamp, behavioral_features
+from spark.scoring import fraud_score, fraud_label
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, FloatType, TimestampType
+from spark.ai_service import generate_embeddings
 
 def create_spark_session():
     spark = SparkSession.builder \
@@ -10,8 +12,11 @@ def create_spark_session():
         .master("local[*]") \
         .config("spark.driver.memory", "4g") \
         .config("spark.executor.memory", "4g") \
-        .config("spark.sql.shuffle.partitions", "8") \
+        .config("spark.sql.shuffle.partitions", "1") \
         .config("spark.sql.adaptive.enabled", "true") \
+        .config("spark.python.worker.reuse", "true") \
+        .config("spark.executor.instances", "1") \
+        .config("spark.executor.cores", "2") \
         .config("spark.sql.adaptive.shuffle.targetPostShuffleInputSize", "64MB") \
         .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
         .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer") \
@@ -25,7 +30,7 @@ def read_kafka_stream(spark):
         .option("kafka.bootstrap.servers", "localhost:9092") \
         .option("subscribe", "reviews") \
         .option("startingOffsets", "latest") \
-        .option("maxOffsetsPerTrigger", 5000) \
+        .option("maxOffsetsPerTrigger", 1000) \
         .load()
     return df
 def parse_stream(df):
@@ -43,12 +48,26 @@ def parse_stream(df):
     return parsed
 def start_stream(df):
     query = df.writeStream \
-        .format("console") \
-        .outputMode("update") \
-        .trigger(processingTime="3 seconds") \
+        .format("parquet") \
+        .option("path", "output/fraud") \
+        .option("checkpointLocation", "output/checkpoints") \
+        .outputMode("append") \
+        .trigger(processingTime="15 seconds") \
         .start()
 
     query.awaitTermination()
+
+schema = StructType([
+    StructField("window", StructType([
+        StructField("start", TimestampType()),
+        StructField("end", TimestampType())
+    ])),
+    StructField("user_id", StringType()),
+    StructField("review_count", IntegerType()),
+    StructField("sample_text", StringType()),
+    StructField("embedding", ArrayType(FloatType())),
+    StructField("is_similar", IntegerType())
+])
 
 if __name__ == "__main__":
     spark = create_spark_session()
@@ -57,5 +76,8 @@ if __name__ == "__main__":
     filtered_df = apply_heuristics(parsed_df)
     timestamped_df = add_timestamp(filtered_df)
     behavior_df = behavioral_features(timestamped_df)
+    ai_df = behavior_df.mapInPandas(generate_embeddings, schema=schema)
+    scored_df = fraud_score(ai_df)
+    final_df = fraud_label(scored_df)
 
-    start_stream(behavior_df)    
+    start_stream(final_df)

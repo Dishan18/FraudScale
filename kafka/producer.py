@@ -1,6 +1,7 @@
 import json
 import time
 from kafka import KafkaProducer
+from datetime import datetime, timezone
 
 producer = KafkaProducer(
     bootstrap_servers="localhost:9092",
@@ -17,6 +18,7 @@ def stream_data():
         with open("data/reviews.json", "r") as f:
             for line in f:
                 review = json.loads(line)
+                review["timestamp"] = datetime.now(timezone.utc).isoformat()
                 producer.send("reviews", review)
                 
                 count += 1

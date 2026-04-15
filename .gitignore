@@ -1,18 +1,65 @@
+# Python
 venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+output/
+*.index
+
+# Logs
 *.log
-*.tmp
-.env
-
-# Spark temp
-spark-warehouse/
-metastore_db/
-
-# Kafka logs
-kafka-logs/
 logs/
+kafka-logs/
+
+# Data
+data/
+output/
+
+# Environment
+.env
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Spark
+spark-warehouse/
+metastore_db/
+*.crc
+
+# Hadoop
+hadoop_tmp/
+
+# HuggingFace / Models
+hf_cache/
+.cache/
+*.bin
+*.pt
+
+# FAISS (future)
+*.index
+
+# VSCode
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Output data (Spark + Parquet + checkpoints)
+output/
+
+# FAISS index
+*.index
+
+# HuggingFace / model cache
+hf_cache/
+.cache/
+
+# Temp files
+*.tmp
