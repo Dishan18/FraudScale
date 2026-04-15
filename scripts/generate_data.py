@@ -1,7 +1,6 @@
 import json
 import random
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 users = [f"user_{i}" for i in range(1000)]
 products = [f"product_{i}" for i in range(500)]
@@ -17,34 +16,55 @@ reviews_text = [
     "Horrible",
     "Average product",
 ]
+
 def generate_review(i):
+    now = datetime.now(timezone.utc)
+
+    # 🔹 BOT: consistent semantic cluster
     if i % 20 == 0:
         user = "bot_user_1"
-        text = "Great product!"
-    
-    elif i % 15 == 0:
-        user = random.choice(users)
-        text = "Excellent item"
-    
+        base = "Great product"
+        variations = [
+            base,
+            base + "!",
+            "This is a great product",
+            "Really great product",
+            "Great product, works well"
+        ]
+        text = random.choice(variations)
+
+    # 🔹 BURST USER
     elif i % 25 == 0:
         user = f"burst_user_{random.randint(1,5)}"
         text = random.choice(reviews_text)
-    
+
+    # 🔹 NORMAL USER
     else:
         user = random.choice(users)
-        text = random.choice(reviews_text)
-    
+        base = random.choice(reviews_text)
+
+        variations = [
+            base,
+            base.lower(),
+            f"I think this is {base.lower()}",
+            f"{base}, would recommend",
+            f"Not sure, but {base.lower()}",
+        ]
+        text = random.choice(variations)
+
     return {
         "user_id": user,
         "product_id": random.choice(products),
         "review_text": text,
         "rating": random.randint(1, 5),
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": now.isoformat()
     }
+
 def main():
     with open("data/reviews.json", "w") as f:
         for i in range(200000):
             review = generate_review(i)
             f.write(json.dumps(review) + "\n")
+
 if __name__ == "__main__":
     main()

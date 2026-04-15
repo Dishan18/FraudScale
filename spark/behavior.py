@@ -6,12 +6,13 @@ def add_timestamp(df):
     )
 
 def behavioral_features(df):
-    df = df.withWatermark("timestamp", "1 minute")
+    df = df.withWatermark("timestamp", "10 seconds")
 
     return df.groupBy(
-        window(col("timestamp"), "2 minutes"),
+        window(col("timestamp"), "30 seconds"),
         col("user_id")
     ).agg(
         count("*").alias("review_count"),
+        (count("*") / 30.0).alias("review_rate"),
         first("review_text").alias("sample_text")
     )

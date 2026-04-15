@@ -30,10 +30,10 @@ def read_kafka_stream(spark):
         .option("kafka.bootstrap.servers", "localhost:9092") \
         .option("subscribe", "reviews") \
         .option("startingOffsets", "latest") \
-        .option("maxOffsetsPerTrigger", 1000) \
+        .option("maxOffsetsPerTrigger", 500) \
         .load()
     return df
-def parse_stream(df):
+def parse_stream(df):    
     schema = StructType() \
         .add("user_id", StringType()) \
         .add("product_id", StringType()) \
@@ -47,12 +47,21 @@ def parse_stream(df):
 
     return parsed
 def start_stream(df):
+    def write_to_sinks(batch_df, batch_id):
+        print("BATCH:", batch_id)
+        batch_df.write \
+            .mode("append") \
+            .parquet("output/fraud")
+
+        batch_df.write \
+            .mode("append") \
+            .json("output/live")
+
     query = df.writeStream \
-        .format("parquet") \
-        .option("path", "output/fraud") \
+        .outputMode("update") \
+        .foreachBatch(write_to_sinks) \
         .option("checkpointLocation", "output/checkpoints") \
-        .outputMode("append") \
-        .trigger(processingTime="15 seconds") \
+        .trigger(processingTime="5 seconds") \
         .start()
 
     query.awaitTermination()
@@ -64,9 +73,10 @@ schema = StructType([
     ])),
     StructField("user_id", StringType()),
     StructField("review_count", IntegerType()),
+    StructField("review_rate", FloatType()),
     StructField("sample_text", StringType()),
     StructField("embedding", ArrayType(FloatType())),
-    StructField("is_similar", IntegerType())
+    StructField("similarity_score", FloatType())
 ])
 
 if __name__ == "__main__":
