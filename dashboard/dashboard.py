@@ -3,14 +3,13 @@ import requests
 import pandas as pd
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
+import os
 
-# ---------------- CONFIG ----------------
 st.set_page_config(page_title="FraudScale Live Command", layout="wide", initial_sidebar_state="collapsed")
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://api:8000")
 
 st_autorefresh(interval=30000, key="refresh")
 
-# ---------------- KPI STATE ----------------
 if "prev_stats" not in st.session_state:
     st.session_state.prev_stats = {
         "total_records": 0,
@@ -19,9 +18,13 @@ if "prev_stats" not in st.session_state:
         "unique_users": 0
     }
 
-prev = st.session_state.prev_stats
+prev = {
+    "total_records": st.session_state.prev_stats.get("total_records", 0),
+    "fraud_count": st.session_state.prev_stats.get("fraud_count", 0),
+    "fraud_rate": st.session_state.prev_stats.get("fraud_rate", 0),
+    "unique_users": st.session_state.prev_stats.get("unique_users", 0),
+}
 
-# ---------------- UI ----------------
 st.markdown("""
 <style>
 
@@ -130,23 +133,21 @@ html, body, [data-testid="stAppViewContainer"] {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- DATA ----------------
 @st.cache_data(ttl=25)
 def fetch_data(endpoint):
     try:
         r = requests.get(f"{API_URL}/{endpoint}", timeout=3)
         return r.json()
-    except:
+    except Exception as e:
+        st.warning(f"API error: {e}")
         return {}
 
 stats = fetch_data("stats")
 live_data = fetch_data("live")
 df = pd.DataFrame(live_data) if live_data else pd.DataFrame()
 
-# ---------------- HEADER ----------------
 st.markdown("<h2 style='margin:0; color:white;'>🛡️ FraudScale <span style='color:#666; font-size:14px;'>LIVE COMMAND</span></h2>", unsafe_allow_html=True)
 
-# ---------------- KPI ROW ----------------
 k1, k2, k3, k4 = st.columns(4)
 
 def get_delta(curr, prev, is_percent=False):
@@ -163,36 +164,36 @@ def get_delta(curr, prev, is_percent=False):
 with k1:
     val = stats.get("total_records", 0)
     delta, color = get_delta(val, prev["total_records"])
-    st.markdown('<div class="tooltip"><span class="section-header">📈 Throughput</span><span class="tooltiptext">Total reviews processed</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tooltip"><span class="section-header">Throughput</span><span class="tooltiptext">Total reviews processed</span></div>', unsafe_allow_html=True)
     st.metric("", val, delta=delta, delta_color=color)
 
 with k2:
     val = stats.get("fraud_count", 0)
     delta, color = get_delta(val, prev["fraud_count"])
-    st.markdown('<div class="tooltip"><span class="section-header">🚨 Fraud Cases</span><span class="tooltiptext">Detected fraud</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tooltip"><span class="section-header">Fraud Cases</span><span class="tooltiptext">Detected fraud</span></div>', unsafe_allow_html=True)
     st.metric("", val, delta=delta, delta_color="inverse")
 
 with k3:
     val = stats.get("fraud_rate", 0)
     delta, color = get_delta(val, prev["fraud_rate"], is_percent=True)
-    st.markdown('<div class="tooltip"><span class="section-header">🎯 Fraud Rate</span><span class="tooltiptext">Fraud percentage</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tooltip"><span class="section-header">Fraud Rate</span><span class="tooltiptext">Fraud percentage</span></div>', unsafe_allow_html=True)
     st.metric("", f"{val*100:.2f}%", delta=f"{delta}%", delta_color=color)
 
 with k4:
     val = stats.get("unique_users", 0)
     delta, color = get_delta(val, prev["unique_users"])
-    st.markdown('<div class="tooltip"><span class="section-header">👤 Active Bots</span><span class="tooltiptext">Unique flagged users</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tooltip"><span class="section-header">Active Bots</span><span class="tooltiptext">Unique flagged users</span></div>', unsafe_allow_html=True)
     st.metric("", val, delta=delta, delta_color=color)
 
-st.session_state.prev_stats = stats
+if stats:
+    st.session_state.prev_stats = stats
 
 st.markdown("<hr style='margin:10px 0; border-color:#1c1f26;'>", unsafe_allow_html=True)
 
-# ---------------- MAIN GRID ----------------
 col_left, col_mid, col_right = st.columns([1.5, 1, 1])
 
 with col_left:
-    st.markdown('<div class="tooltip"><span class="section-header">🔥 Alert Stream</span><span class="tooltiptext">Live suspicious activity</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tooltip"><span class="section-header">Alert Stream</span><span class="tooltiptext">Live suspicious activity</span></div>', unsafe_allow_html=True)
     if not df.empty:
         disp = df[["user_id", "review_count", "similarity_score", "is_fraud"]].copy()
         st.dataframe(disp, height=300, use_container_width=True, hide_index=True)
@@ -200,18 +201,17 @@ with col_left:
         st.info("Ingesting stream...")
 
 with col_mid:
-    st.markdown('<div class="tooltip"><span class="section-header">📊 Distribution</span><span class="tooltiptext">Fraud vs normal</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tooltip"><span class="section-header">Distribution</span><span class="tooltiptext">Fraud vs normal</span></div>', unsafe_allow_html=True)
     if not df.empty:
         fig_pie = px.pie(df, names="is_fraud", hole=0.6, color_discrete_map={1: '#ff4b4b', 0: '#00cc96'})
         fig_pie.update_layout(height=300, margin=dict(t=0,b=0,l=0,r=0), showlegend=False, paper_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
 
 with col_right:
-    st.markdown('<div class="tooltip"><span class="section-header">📉 Similarity Trend</span><span class="tooltiptext">Bot similarity pattern</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tooltip"><span class="section-header">Similarity Trend</span><span class="tooltiptext">Bot similarity pattern</span></div>', unsafe_allow_html=True)
     if not df.empty:
         fig_bar = px.bar(df.head(10), x="user_id", y="similarity_score", color="similarity_score", color_continuous_scale='Viridis')
         fig_bar.update_layout(height=300, margin=dict(t=20,b=0,l=0,r=0), showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title=None)
         st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
 
-# ---------------- FOOTER ----------------
 st.markdown('<div class="footer">Dishan Sarkar © 2026 | System Active | Spark 3.5</div>', unsafe_allow_html=True)

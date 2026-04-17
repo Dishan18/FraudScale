@@ -27,9 +27,10 @@ def create_spark_session():
 def read_kafka_stream(spark):
     df = spark.readStream \
         .format("kafka") \
-        .option("kafka.bootstrap.servers", "localhost:9092") \
+        .option("kafka.bootstrap.servers", "localhost:9094") \
         .option("subscribe", "reviews") \
         .option("startingOffsets", "latest") \
+        .option("failOnDataLoss", "false") \
         .option("maxOffsetsPerTrigger", 500) \
         .load()
     return df

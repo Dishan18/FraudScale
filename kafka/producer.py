@@ -4,13 +4,12 @@ from kafka import KafkaProducer
 from datetime import datetime, timezone
 
 producer = KafkaProducer(
-    bootstrap_servers="localhost:9092",
+    bootstrap_servers="localhost:9094",
     value_serializer=lambda v: json.dumps(v).encode('utf-8'),
     linger_ms=5,      
     batch_size=32768,   
     acks=1
 )
-
 def stream_data():
     print("Starting stream to Kafka topic 'reviews'...")
     count = 0

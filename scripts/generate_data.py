@@ -16,11 +16,8 @@ reviews_text = [
     "Horrible",
     "Average product",
 ]
-
 def generate_review(i):
     now = datetime.now(timezone.utc)
-
-    # 🔹 BOT: consistent semantic cluster
     if i % 20 == 0:
         user = "bot_user_1"
         base = "Great product"
@@ -32,13 +29,9 @@ def generate_review(i):
             "Great product, works well"
         ]
         text = random.choice(variations)
-
-    # 🔹 BURST USER
     elif i % 25 == 0:
         user = f"burst_user_{random.randint(1,5)}"
         text = random.choice(reviews_text)
-
-    # 🔹 NORMAL USER
     else:
         user = random.choice(users)
         base = random.choice(reviews_text)

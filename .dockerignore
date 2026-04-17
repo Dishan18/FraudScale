@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Virtual env
+venv/
+.env/
+
+# Git
+.git/
+.gitignore
+
+# Data / outputs (VERY IMPORTANT)
+output/
+data/
+hf_cache/
+
+# Kafka logs (if present locally)
+kafka/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Large model/cache files
+*.pt
+*.bin
+*.safetensors
+
+# Not needed inside containers
+scripts/
+spark/
+ProjectLog.md
+README.md
